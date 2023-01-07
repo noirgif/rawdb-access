@@ -8,6 +8,7 @@ import (
 	"rawdb_access/rawdb"
 
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 func main() {
@@ -19,6 +20,7 @@ func main() {
 		key          string
 		value        string
 		tableName    string
+		compact      bool
 	)
 
 	flag.StringVar(&databaseType, "databaseType", "leveldb", "freeze/leveldb")
@@ -27,6 +29,7 @@ func main() {
 	flag.StringVar(&command, "command", "", "the command to execute (only used in leveldb)")
 	flag.StringVar(&key, "key", "", "the key to use (only used in leveldb)")
 	flag.StringVar(&value, "value", "", "the value to use")
+	flag.BoolVar(&compact, "compact", false, "compact the database (only used in leveldb")
 
 	flag.Parse()
 
@@ -70,6 +73,9 @@ func main() {
 			}
 			db.Delete(encKey, nil)
 		}
-	}
 
+		if compact {
+			db.CompactRange(util.Range{})
+		}
+	}
 }
