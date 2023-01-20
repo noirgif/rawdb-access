@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/hex"
 	"flag"
+	"fmt"
 	"rawdb_access/rawdb"
 
 	"github.com/syndtr/goleveldb/leveldb"
@@ -28,7 +29,7 @@ func main() {
 	flag.StringVar(&tableName, "tableName", "", "the name of the table (only used in ancient)")
 	flag.StringVar(&command, "command", "", "the command to execute (only used in leveldb)")
 	flag.StringVar(&key, "key", "", "the key to use (only used in leveldb)")
-	flag.StringVar(&value, "value", "", "the value to use")
+	flag.StringVar(&value, "value", "", "the value to use, if not provided it will be read from stdin (only used in put(leveldb), or append(freeze)))")
 	flag.BoolVar(&compact, "compact", false, "compact the database (only used in leveldb")
 
 	flag.Parse()
@@ -41,6 +42,12 @@ func main() {
 		defer table.Close()
 
 		batch := table.NewBatch()
+		if value == "" {
+			_, err := fmt.Scanf("%s", &value)
+			if err != nil {
+				panic(err)
+			}
+		}
 		encItem, err := hex.DecodeString(value)
 		if err != nil {
 			panic(err)
@@ -60,6 +67,12 @@ func main() {
 			encKey, err := hex.DecodeString(key)
 			if err != nil {
 				panic(err)
+			}
+			if value == "" {
+				_, err := fmt.Scanf("%s", &value)
+				if err != nil {
+					panic(err)
+				}
 			}
 			encValue, err := hex.DecodeString(value)
 			if err != nil {
