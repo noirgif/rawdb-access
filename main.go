@@ -12,6 +12,33 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
+const (
+	// chainFreezerHeaderTable indicates the name of the freezer header table.
+	chainFreezerHeaderTable = "headers"
+
+	// chainFreezerHashTable indicates the name of the freezer canonical hash table.
+	chainFreezerHashTable = "hashes"
+
+	// chainFreezerBodiesTable indicates the name of the freezer block body table.
+	chainFreezerBodiesTable = "bodies"
+
+	// chainFreezerReceiptTable indicates the name of the freezer receipts table.
+	chainFreezerReceiptTable = "receipts"
+
+	// chainFreezerDifficultyTable indicates the name of the freezer total difficulty table.
+	chainFreezerDifficultyTable = "diffs"
+)
+
+// chainFreezerNoSnappy configures whether compression is disabled for the ancient-tables.
+// Hashes and difficulties don't compress well.
+var chainFreezerNoSnappy = map[string]bool{
+	chainFreezerHeaderTable:     false,
+	chainFreezerHashTable:       true,
+	chainFreezerBodiesTable:     false,
+	chainFreezerReceiptTable:    false,
+	chainFreezerDifficultyTable: true,
+}
+
 func main() {
 	// read the command from the arguments
 	var (
@@ -35,7 +62,12 @@ func main() {
 	flag.Parse()
 
 	if databaseType == "freeze" {
-		table, err := rawdb.NewFreezerTable(databasePath, tableName, false, false)
+		// find whether the table is snappy-enabled
+		if _, ok := chainFreezerNoSnappy[tableName]; !ok {
+			panic("unknown table name")
+		}
+
+		table, err := rawdb.NewFreezerTable(databasePath, tableName, chainFreezerNoSnappy[tableName], false)
 		if err != nil {
 			panic(err)
 		}
@@ -55,7 +87,7 @@ func main() {
 			batch.AppendItem(encItem)
 		}
 		batch.Commit()
-
+		table.Close()
 	} else if databaseType == "leveldb" {
 		db, err := leveldb.OpenFile(databasePath, nil)
 		if err != nil {
