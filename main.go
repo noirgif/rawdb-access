@@ -87,7 +87,7 @@ func main() {
 			batch.AppendItem(encItem)
 		}
 		batch.Commit()
-		table.Close()
+		table.Sync()
 	} else if databaseType == "leveldb" {
 		db, err := leveldb.OpenFile(databasePath, nil)
 		if err != nil {
