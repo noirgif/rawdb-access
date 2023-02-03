@@ -39,6 +39,9 @@ var chainFreezerNoSnappy = map[string]bool{
 	chainFreezerDifficultyTable: true,
 }
 
+// freezerTableSize defines the maximum size of freezer data files.
+const freezerTableSize = 2 * 1000 * 1000 * 1000
+
 func main() {
 	// read the command from the arguments
 	var (
@@ -63,31 +66,43 @@ func main() {
 
 	if databaseType == "freeze" {
 		// find whether the table is snappy-enabled
-		if _, ok := chainFreezerNoSnappy[tableName]; !ok {
-			panic("unknown table name")
-		}
+		if command == "" || command == "append" {
+			if _, ok := chainFreezerNoSnappy[tableName]; !ok {
+				panic("unknown table name")
+			}
 
-		table, err := rawdb.NewFreezerTable(databasePath, tableName, chainFreezerNoSnappy[tableName], false)
-		if err != nil {
-			panic(err)
-		}
-		defer table.Close()
-
-		batch := table.NewBatch()
-		if value == "" {
-			_, err := fmt.Scanf("%s", &value)
+			table, err := rawdb.NewFreezerTable(databasePath, tableName, chainFreezerNoSnappy[tableName], false)
 			if err != nil {
 				panic(err)
 			}
+			defer table.Close()
+
+			batch := table.NewBatch()
+			if value == "" {
+				_, err := fmt.Scanf("%s", &value)
+				if err != nil {
+					panic(err)
+				}
+			}
+			encItem, err := hex.DecodeString(value)
+			if err != nil {
+				panic(err)
+			} else {
+				batch.AppendItem(encItem)
+			}
+			batch.Commit()
+			table.Sync()
+		} else if command == "repair" {
+			// will be automatically truncated if created with readonly=false
+			freezer, err := rawdb.NewFreezer(databasePath, "", false, freezerTableSize, chainFreezerNoSnappy)
+			if err != nil {
+				panic(err)
+			}
+			defer freezer.Close()
+			if err := freezer.Sync(); err != nil {
+				panic(err)
+			}
 		}
-		encItem, err := hex.DecodeString(value)
-		if err != nil {
-			panic(err)
-		} else {
-			batch.AppendItem(encItem)
-		}
-		batch.Commit()
-		table.Sync()
 	} else if databaseType == "leveldb" {
 		db, err := leveldb.OpenFile(databasePath, nil)
 		if err != nil {
